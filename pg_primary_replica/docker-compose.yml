@@ -25,30 +25,6 @@ services:
     volumes:
       - ./slave:/var/lib/postgresql/data
 
-#  pgpool:
-#    image: bitnami/pgpool:4
-#    container_name: pgpool
-#    environment:
-#      - PGPOOL_BACKEND_NODES=0:postgres_master:5432,1:postgres_slave:5433
-#      - PGPOOL_SR_CHECK_USER=admin
-#      - PGPOOL_SR_CHECK_PASSWORD=1234
-#      - PGPOOL_POSTGRES_USERNAME=admin
-#      - PGPOOL_POSTGRES_PASSWORD=1234
-#      - PGPOOL_ADMIN_USERNAME=pgpool_admin
-#      - PGPOOL_ADMIN_PASSWORD=pgpool_password
-#      - PGPOOL_FAILOVER_ON_BACKEND_ERROR=yes
-##      - PGPOOL_FAILOVER_COMMAND=/opt/bitnami/scripts/pgpool/failover.sh %d %P %H %R
-#      - ALLOW_EMPTY_PASSWORD=yes
-#
-#    ports:
-#      - "5434:5432"
-#    depends_on:
-#      - master
-#      - slave
-#    volumes:
-#      - ./pgpool/conf:/opt/bitnami/pgpool/conf
-#      - ./pgpool/scripts/failover.sh:/opt/bitnami/scripts/pgpool/failover.sh
-
   pgpool:
     build:
       context: .

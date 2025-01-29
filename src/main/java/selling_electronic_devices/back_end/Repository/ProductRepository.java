@@ -26,7 +26,7 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     Page<Product> findByCategory(Category category, Pageable pageable);
 
     @Query("SELECT COUNT(p) FROM Product p WHERE EXTRACT(YEAR FROM p.createdAt) = :year " +
-            "AND (:month IS NULL OR EXTRACT(MONTH FROM p.createdAt) = :month) ") // logic vị từ: Month != NULL && kiểm tra EXTRACT(MONTH FROM p.createdAt) = month (*), ta có: A & B === -A ^ B ===> (*) <=> Month == NULL OR EXTRACT() = month
+            "AND (:month IS NULL OR EXTRACT(MONTH FROM p.createdAt) = :month) ") // logic vị từ: NẾU Month != NULL THÌ kiểm tra EXTRACT(MONTH FROM p.createdAt) = month (*), ta có: A => B <==> -A ^ B ===> (*) <=> Month == NULL OR EXTRACT() = month
         // hoặc suy luận thuần túy:
         // bỏ qua -> Luôn đúng (1) hoặc Ko tồn tại
         // Khi month NULL pass =>  toàn khối điều kiện = True ko xét phần còn lai

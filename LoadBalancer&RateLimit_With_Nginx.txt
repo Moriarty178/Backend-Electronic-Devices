@@ -1,0 +1,66 @@
+
+events {}
+
+http {
+    # Định nghĩa vùng rate limit (10 req/s, mỗi IP có 10MB cache)
+    limit_req_zone $binary_remote_addr zone=rate_limit_zone:10m rate=10r/m;
+
+    # Định nghĩa giới hạn kết nối đồng thời
+    limit_conn_zone $binary_remote_addr zone=conn_limit_zone:10m;
+
+    upstream backend_servers {
+        least_conn; # chọn instance ít kết nối hơn.
+        # ip_hash; # phân phối theo địa chỉa IP client - tức là các yêu cầu từ 1 IP luôn được gửi đến 1 instance backend ==> Tăng tính nhất quán, hữu ích những ứng dụng ko hoàn toàn "stateless"
+        # random; # chọn ngẫu nhiễn instance backend
+        # random two least_conn; # kết hợp random + least_conn: chọn ngẫu nhiên 2 instance, sau đó chọn thằng ít kết nối hơn.
+        # có thể kết hợp nhiều Algorithm để phù hợp với yêu cầu, hoàn cảnh, vd: least + weight hoặc least + random ...
+
+        # Backend servers # add health check (đảm bảo Nginx ko gửi request của client đến instance backend bị lỗi, thêm max_fails và fail_timeout )
+        server localhost:8081 max_fails=3 fail_timeout=30s weight=3; #dùng cho Algoritm Weighted Load Balacing: trọng số (weight) càng cao instance càng nhận nhiều yêu cầu hơn, weight algorithm ko cần khai báo ở upstream
+        server localhost:8082 max_fails=3 fail_timeout=30s weight=2;
+        server localhost:8083 max_fails=3 fail_timeout=30s weight=1;
+    }
+
+    server {
+        listen 8080; # Nginx - Load Balancer lắng nghe mọi request từ client ở cổng này ---> sau đó phân phối tải cho các instance backend: 8081, 8082, 8083, ... được định nghĩa trong Upstream THEO algorithm (nếu có, ko thì phân phối theo mặc định)
+
+        #### Cấu hình hiển thị thông báo khi request đến giới hạn
+        # error_page 503 /rate_limit.html;
+        # location = /rate_limit.html {
+        #     root D:/Downloads/P3idiots/zip/nginx-1.26.2/nginx-1.26.2/html;
+        # }
+
+        location / {
+            # Áp dụng giới hạn req (burst=20, không delay)
+            limit_req zone=rate_limit_zone burst=12 nodelay;
+
+            # Áp dụng giới hạn kết nối (5 kết nối đồng thời)
+            limit_conn conn_limit_zone 5;
+
+            proxy_pass http://backend_servers;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 10s;
+            proxy_read_timeout 10s;
+            send_timeout 10s;
+        }
+
+        # Endpoint kiểm tra thủ công sức khỏe backend
+        location /healthcheck {
+            proxy_pass http://backend_servers/actuator/health;
+            proxy_set_header Host $host;
+        }
+
+        access_log logs/access.log;
+        error_log logs/error.log;
+    }
+}
+
+# Command:
+# nginx -s stop: dừng Nginx
+# nginx -s reload: reload lại Load Balancer
+# nginx -t: Kiểm tra cấu hình
