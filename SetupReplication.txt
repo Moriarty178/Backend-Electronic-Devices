@@ -210,7 +210,7 @@ Hint: có cách sao chép (pg_basebackup) mà ko cần container Slave phải đ
 \c name_db: access database
 \d: list table of databased
 \d+ table_name; see detail table
-okkkkkkk
+
 
 - Lệnh xem file:
     Command: cat /path/...
