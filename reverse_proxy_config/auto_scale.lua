@@ -1,0 +1,30 @@
+-- ###Tổng quan
+-- Để có thể thực hiện auto scale theo tải thì Nginx (OpenResty) cần phải quản lý được:
+-- 1. Tải (số request) trong một đơn vị thời gian
+-- - Cần thêm phần một key "traffic:count" để theo dõi traffic
+--    + Triển khai: thêm nó ngay trong phần lua script của Rate Limit (rate_limit.lua).
+--    * Chú ý: chỉ các request ko bị rate limit mới được tính là tải (traffic:count).
+--             Bởi: nếu mọi request đều được đếm thì hệ thống có thể hiểu sai về "tải thực tế" và scale backend ko cần thiết
+--             vd: một client gửi 1000 req ->  nếu đếm thì ht sẽ thêm backend để chịu tải, trong khi thực chất chỉ có 10 req là được ht thực thi còn 990 req đã bị rate limit - ko ảnh hưởng đến tải.
+-- 2. Danh sách server (backends)
+-- - Danh sách các backend đang chạy cần lưu và cập nhật trong Redis hoặc được theo dõi bởi 1 Discovery Service như: Consul, Zookeeper...
+--    + Triển khai: mỗi khi một instance backend được tạo (khởi chạy) thì nó sẽ tự thêm mình vào trong Redis (key = "backend_servers")
+--                Khi nó shutdown thì nó cũng sẽ tự xóa mình khỏi Redis
+--              ==> cấu hình trong mã của backend.
+
+-- Lưu ý:        TRÁNH VẤN ĐỀ: NGINX điều phối tải đến server chưa khởi tạo hoặc đã chết
+--         +Khi thêm backend: - ứng dụng khởi tạo hoàn tất mới ghi vào Redis
+--                         -> nếu ghi trước có thể bị: Nginx đọc từ Redis rồi điều phối tải cho nó trong khi nó chưa khởi tạo xong
+--         +Khi xóa backend: - xóa khỏi Redis trước - nếu kill trước rồi đợi xong mới xóa
+--                         -> sẽ dẫn đến th server bị xóa (kill) rồi nhưng trong Redis chưa kịp xóa -> Nginx (vốn được cấu hình động theo Redis) có thể điều phối tải đến server đã chết.
+
+--
+-- 3. Sau khi có tải & backend_servers, ta sẽ thay đổi một chút cấu hình trong nginx.conf, cụ thể:
+-- - Bây giờ thay vì cấu hình tĩnh để nginx theo dõi các server như server http://localhost:8081, 8082, 8083, ....
+--   thì ta sẽ lấy backend_servers trong Redis ra để cấu hình Nginx theo dõi, quản lý nó.
+--
+-- ❗ Một vấn đề đặt ra bây giờ đó là: "Làm thế nào để Nginx tự động cập nhật cấu hình danh sách backends theo thời gian thực mỗi khi nó thay đổi (thêm/bớt) mà không cần reload để tránh hệ thống bị tắt" ❓❓❓
+-- ==> Lua Script tự động Thêm
+--
+-- ###Test
+-- 1..11 | ForEach-Object { Invoke-WebReqdduest -Uri "http://localhost:8080/customer" -UseBasicParsing }
