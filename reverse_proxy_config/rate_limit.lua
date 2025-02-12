@@ -79,11 +79,10 @@ local function auto_scale_backend()
         )
 
         os.execute(start_command)
-        ngx.log(ngx.ERR, "Starting new backend on port " .. new_port)
+        ngx.log(ngx.INFO, "Starting new backend on port " .. new_port)
     end
 
     if backend_count > 3 and traffic_count / backend_count < min_threshold then -- ????vấn đề vừa chuyến sang cửa sổ mới: count reset = 0 -> khi incr sẽ remove instace -> ko hợp lý, vì tải vẫn có thể đang lớn
-        -- Loại bỏ backend nếu lượng traffic thấp
 --         local remove_instance = backends[#backends]
 --         local remove_port = string.match(remove_instance, ":(%d+)")
 
@@ -104,28 +103,28 @@ local function auto_scale_backend()
         local remove_port = max_port
 
         if remove_port then
-            ngx.log(ngx.ERR, "Stopping backend on MAX_PORT " .. remove_port)
+            ngx.log(ngx.WARN, "Stopping backend on MAX_PORT " .. remove_port)
 
             -- Xóa khỏi Redis TRƯỚC KHI kill tiến trình
             red:srem("backend_servers", remove_instance)
-            ngx.log(ngx.ERR, "Removed backend from Redis: " .. remove_instance)
+            ngx.log(ngx.INFO, "Removed backend from Redis: " .. remove_instance)
 
-            -- Lấy PID của tiến trình backend dựa trên cổng (Windows)
+            -- Lấy PID của tiến trình backend dựa trên port (Windows)
             local get_pid_cmd = string.format('netstat -ano | findstr :%d', remove_port)
             local pid_file = io.popen(get_pid_cmd) -- đang là file, kiểu như csv, xlsx, ...
             local pid_output = pid_file:read("*a") -- Đọc toàn bộ output - file
             pid_file:close()
 
-            ngx.log(ngx.ERR, "Netstat output: " .. pid_output) -- Debug xem có dữ liệu không
+            ngx.log(ngx.INFO, "Netstat output: " .. pid_output) -- Debug xem có dữ liệu không
 
             local backend_pid = pid_output:match("(%d+)%s*$") -- Tìm số cuối cùng (PID)
 
             if backend_pid then
-                ngx.log(ngx.ERR, "Found backend PID: " .. backend_pid)
+                ngx.log(ngx.INFO, "Found backend PID: " .. backend_pid)
                 local stop_command = string.format('taskkill /F /PID %s', backend_pid)
 
                 os.execute(stop_command)
-                ngx.log(ngx.ERR, "Killed backend process with PID: " .. backend_pid)
+                ngx.log(ngx.WARN, "Killed backend process with PID: " .. backend_pid)
             else
                 ngx.log(ngx.ERR, "ERROR: Failed to retrieve PID for backend on port " .. remove_port)
                 return  -- Không tiếp tục nếu không có PID

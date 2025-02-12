@@ -27,4 +27,5 @@
 -- ==> Lua Script tự động Thêm
 --
 -- ###Test
--- 1..11 | ForEach-Object { Invoke-WebReqdduest -Uri "http://localhost:8080/customer" -UseBasicParsing }
+-- 1..11 | ForEach-Object { Invoke-WebRequest -Uri "http://localhost:8080/customer" -UseBasicParsing }
+-- - (Invoke-WebRequest -Uri "http://localhost:8080/customer").Headers (kiểm tra serer nào đã xử lý)
