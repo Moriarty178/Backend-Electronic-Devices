@@ -90,8 +90,8 @@ Hướng Dẫn Thiết Lập Master/Slave PostgreSQL Replication Sử Dụng Doc
 
 3. Xóa slave và sao chép Master -> Slave:(điều này sẽ tránh lỗi "database system identifier differs between the primary and standby")          ====||=========>>>>>>
      Cách 1: docker exec -it postgres_slave bash:
-        Lệnh xóa: rm -rf /var/lib/postgresql/data/*
-        Ngay sau đó thực hiện sao chép: pg_basebackup -h postgres_master -D /var/lib/postgresql/data -U replicator2 -Fp -Xs -P -R
+        Lệnh xóa:       rm -rf /var/lib/postgresql/data/*
+        Lệnh sao chép:  pg_basebackup -h postgres_master -D /var/lib/postgresql/data -U replicator2 -Fp -Xs -P -R
 
      Cách 2:
      Lệnh sao chép:

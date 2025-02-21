@@ -12,6 +12,9 @@ import java.net.InetAddress;
 @Component
 public class BackendRegistration implements CommandLineRunner {
 
+    private static final String BACKEND_SET_KEY = "backend_servers";
+    private static final String REDIS_CHANNEL = "update_upstream";
+
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
@@ -22,17 +25,15 @@ public class BackendRegistration implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        //String port = System.getProperty("server.port"); // ko lấy được do --PORT=8084 ko được coi là System Property
-
         // Lấy IP của máy chủ
         String ip = InetAddress.getLocalHost().getHostAddress(); // "127.0.0.1"
 
-        // Định nghĩa địa chỉ máy chủ để đăng ký/hủy - (thêm/xóa) khỏi Redis
         backendAddress = ip + ":" + port;
 
         //  Đăng ký - lưu máy chủ vào Redis
         redisTemplate.opsForSet().add("backend_servers", backendAddress);
-        System.out.println("Registered backend in Redis: " + backendAddress);
+        //redisTemplate.convertAndSend(REDIS_CHANNEL, "refresh"); // publish t bóa đến Lua Script (Subscriber) để nó update servers -> Shared Memory
+        System.out.println("=========|_|========= Registered backend in Redis: " + backendAddress);
 
         // 💡 Đảm bảo xóa backend khi ứng dụng bị dừng
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -50,7 +51,8 @@ public class BackendRegistration implements CommandLineRunner {
         if (backendAddress != null) {
             // xóa máy chủ
             redisTemplate.opsForSet().remove("backend_servers", backendAddress);
-            System.out.println("Deregistered backend from Redis: " + backendAddress);
+            //redisTemplate.convertAndSend(REDIS_CHANNEL, "refresh"); // thống báo để lua script update Shared Memory
+            System.out.println("=========|_|========= Deregistered backend from Redis: " + backendAddress);
         }
     }
 }

@@ -47,6 +47,43 @@ local function update_upstream()
     ngx.log(ngx.ERR, "Updated upstream list: ", table.concat(upstream_list, ","))
 end
 
+-- -- Lắng nghe Redis Pub/Sub để cập nhật backend động
+-- local function listen_for_updates()
+--     while true do
+--         local red = connect_redis()
+--         if not red then
+--             ngx.log(ngx.ERR, "Failed to connect to Redis, retrying in 5s...")
+--             ngx.sleep(5) -- Đợi 5 giây trước khi thử lại
+--         else
+--             ngx.log(ngx.ERR, "Connected to Redis, subscribing to 'update_upstream'")
+--             local res, err = red:subscribe("update_upstream")
+--
+--             if not res then
+--                 ngx.log(ngx.ERR, "Failed to subscribe to Redis channel: ", err)
+--                 ngx.sleep(5) -- Đợi 5 giây trước khi thử lại
+--             else
+--                 -- Lắng nghe sự kiện liên tục
+--                 while true do
+--                     local res, err = red:read_reply()
+--                     if res then
+--                         ngx.log(ngx.ERR, "Received event from Redis.")
+--                         if res[3] == "refresh" then
+--                             update_upstream() -- Gọi cập nhật backend khi nhận thông điệp "refresh"
+--                         end
+--                     elseif err then
+--                         ngx.log(ngx.ERR, "Redis connection lost: ", err)
+--                         break -- Thoát vòng lặp, kết nối lại Redis
+--                     end
+--                 end
+--             end
+--         end
+--     end
+-- end
+
+
+-- ngx.thread.spawn(listen_for_updates) -- Khởi động luồng lắng nghe Redis trong init_worker
+-- ngx.timer.at(0, listen_for_updates)
+
 -- Đăng ký timer để chạy mỗi 5 giây
 local function start_timer()
     local ok, err = ngx.timer.at(0, update_upstream)

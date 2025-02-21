@@ -1,3 +1,24 @@
+-- A. Rate Limit
+--
+-- ###Tổng quan
+-- Với mỗi yêu cầu từ mỗi IP (client) ta sẽ:
+-- - Khi có yêu cầu tử 1 IP đến Reverse Proxy (Nginx) thì:
+--  + Xóa toàn bộ số req cũ hơn khoảng [t-60s, t] của IP (key) đó khỏi Redis
+--  + Kiểm tra số lượng req còn lại của IP (key) đó (vẫn nằm trong khoảng trên).
+--     ++ Nếu quá ngưỡng thì tiến hành giới hạn truy cập với IP
+--     ++ Chưa quá thì thêm req đó vào key (IP) trong Redis, Nginx tiếp tục gửi yêu cầu đến instance backend
+--
+-- check PID process: netstat -ano | findstr :port (pid)
+-- kill process =PID: taskkill /F /PID pid
+-- tasklist | findstr nginx
+--
+-- Lưu ý:
+--         +Khi thêm backend: - ứng dụng khởi tạo hoàn tất mới ghi vào Redis
+--                         -> Tránh việc Nginx đọc tử Redis rồi điều phối tải cho nó trong khi nó chưa khởi tạo xong
+--         +Khi xóa backend: - xóa khỏi Redis trước - nếu kill trước rồi đợi xong mới xóa
+--                         -> sẽ dẫn đến th server bị xóa (kill) rồi nhưng trong Redis chưa kịp xóa -> Nginx (vốn được cấu hình động theo Redis) có thể điều phối tải đến server đã chết.
+--
+-- B. Auto Scale up/down
 -- ###Tổng quan
 -- Để có thể thực hiện auto scale theo tải thì Nginx (OpenResty) cần phải quản lý được:
 -- 1. Tải (số request) trong một đơn vị thời gian
@@ -11,13 +32,13 @@
 --    + Triển khai: mỗi khi một instance backend được tạo (khởi chạy) thì nó sẽ tự thêm mình vào trong Redis (key = "backend_servers")
 --                Khi nó shutdown thì nó cũng sẽ tự xóa mình khỏi Redis
 --              ==> cấu hình trong mã của backend.
-
+--
 -- Lưu ý:        TRÁNH VẤN ĐỀ: NGINX điều phối tải đến server chưa khởi tạo hoặc đã chết
 --         +Khi thêm backend: - ứng dụng khởi tạo hoàn tất mới ghi vào Redis
 --                         -> nếu ghi trước có thể bị: Nginx đọc từ Redis rồi điều phối tải cho nó trong khi nó chưa khởi tạo xong
 --         +Khi xóa backend: - xóa khỏi Redis trước - nếu kill trước rồi đợi xong mới xóa
 --                         -> sẽ dẫn đến th server bị xóa (kill) rồi nhưng trong Redis chưa kịp xóa -> Nginx (vốn được cấu hình động theo Redis) có thể điều phối tải đến server đã chết.
-
+--
 --
 -- 3. Sau khi có tải & backend_servers, ta sẽ thay đổi một chút cấu hình trong nginx.conf, cụ thể:
 -- - Bây giờ thay vì cấu hình tĩnh để nginx theo dõi các server như server http://localhost:8081, 8082, 8083, ....
